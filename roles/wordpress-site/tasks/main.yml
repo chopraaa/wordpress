@@ -1,0 +1,24 @@
+---
+- name: Create project folders
+  file:
+    path: /root/sites/{{ site.project_name }}
+    state: directory
+
+- name: Copy files required for WordPress
+  template:
+    src: "{{ item }}.j2"
+    dest: /root/sites/{{ site.project_name }}/{{ item }}
+  loop:
+    - docker-compose.yml
+    - .env
+
+- name: Download WordPress
+  unarchive:
+    src: https://wordpress.org/latest.tar.gz
+    dest: /root/sites/{{ site.project_name }}
+    remote_src: yes
+
+- name: Rename the WordPress directory and fix some permission issues
+  shell: >
+    mv /root/sites/{{ site.project_name }}/wordpress /root/sites/{{ site.project_name }}/wp-data;
+    chown -R 1000:1000 /root/sites/{{ site.project_name }}/wp-data

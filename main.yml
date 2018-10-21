@@ -1,0 +1,61 @@
+---
+- name: "Install docker-ce"
+  hosts: all
+  become: True
+  vars:
+    # id:pass used for authenticating pma (https://www.phpmyadmin.net/) and portainer (https://portainer.io/)
+    basic_auth_user: admin
+    basic_auth_pass: password
+    acme_email: root@localhost.org
+    wordpress_sites:
+      # List of websites that will be created on the target host.
+      - project_name: project-1
+        project_base_url: project.old
+        db_name: wordpress
+        db_user: wordpress
+        db_password: wordpress
+        db_root_password: password
+      - project_name: project-2
+        project_base_url: project.new
+        db_name: wordpress
+        db_user: wordpress
+        db_password: wordpress
+        db_root_password: password
+  # Installs docker-ce and docker-compose
+  roles:
+    - geerlingguy.docker
+  tasks:
+    - name: Install apache2-utils
+      apt:
+        name: apache2-utils
+        state: present
+      delegate_to: localhost
+
+    - name: Generate password for basic_auth
+      shell: printf {{ basic_auth_pass }} | htpasswd -in {{ basic_auth_user }}
+      register: basic_auth_result
+      delegate_to: localhost
+
+    # WordPress
+
+    - include_role:
+        name: wordpress-site
+      with_items:  "{{ wordpress_sites }}"
+      loop_control:
+        loop_var: site
+
+    # Traefik
+
+    - name: Blank acme.json
+      file:
+        path: /root/sites/acme.json
+        state: touch
+        mode: 0600
+
+    - name: Create files for traefik
+      template:
+        src: ./traefik/{{ item }}.j2
+        dest: /root/sites/{{ item }}
+      loop:
+        - traefik.toml
+        - traefik.yml

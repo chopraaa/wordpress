@@ -1,0 +1,26 @@
+version: '2'
+
+services:
+  traefik:
+    image: traefik
+    restart: unless-stopped
+    command:  --api --docker
+    networks:
+{% for site in wordpress_sites %}
+      - {{ site.project_name }}
+{% endfor %}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '8080:8080'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.toml:/traefik.toml
+      - ./acme.json:/acme.json
+
+networks:
+{% for site in wordpress_sites %}
+  {{ site.project_name }}:
+    external:
+      name: {{ site.project_name }}_default
+{% endfor %}
